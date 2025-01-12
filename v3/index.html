@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Discover Your Romantic Archetype - Based on Dr. Helen Fisher's Model</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Discover your romantic personality type based on Dr. Helen Fisher's research">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+
+    <style>
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .animate-fade-in { animation: fadeIn 0.5s ease-in-out; }
+        .progress-bar { transition: width 0.3s ease-in-out; }
+        *:focus { outline: 2px solid #4F46E5; outline-offset: 2px; }
+        .chart-container {
+            position: relative;
+            height: 50vh;
+            min-height: 300px;
+            max-height: 500px;
+            width: 100%;
+        }
+        @media (max-width: 768px) {
+            .chart-container { height: 40vh; min-height: 250px; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans leading-normal tracking-normal text-gray-900 min-h-screen">
+    <div id="loadingIndicator" class="fixed inset-0 bg-white bg-opacity-90 z-50 flex items-center justify-center hidden">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+    </div>
+
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <div id="progressContainer" class="mb-6">
+            <div class="flex justify-between mb-2">
+                <span class="text-sm font-medium text-blue-600" id="progressText">Question 1 of 20</span>
+                <span class="text-sm font-medium text-blue-600" id="progressPercentage">5%</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                <div class="progress-bar bg-blue-600 h-2.5 rounded-full" style="width: 5%" id="progressBar"></div>
+            </div>
+        </div>
+
+        <!-- Quiz Section -->
+        <div id="quizSection" class="animate-fade-in">
+            <header class="text-center mb-12">
+                <h1 class="text-4xl font-bold text-gray-900 mb-4">Discover Your Romantic Archetype</h1>
+                <p class="text-xl text-gray-600">Based on Dr. Helen Fisher's Research Model</p>
+            </header>
+
+            <div id="errorMessage" class="hidden p-4 mb-6 bg-red-50 border-l-4 border-red-500 text-red-700">
+                <div class="flex items-center">
+                    <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                    <div>
+                        <p class="font-bold">Please complete all questions</p>
+                        <p id="errorDetails" class="text-sm"></p>
+                    </div>
+                </div>
+            </div>
+
+            <form id="quizForm" class="space-y-8"></form>
+        </div>
+
+        <!-- Results Section -->
+        <div id="resultsSection" class="hidden animate-fade-in">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h3 class="text-xl font-bold mb-4">Archetype Profile</h3>
+                    <div class="chart-container">
+                        <canvas id="resultsChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h3 class="text-xl font-bold mb-4">Personality Radar</h3>
+                    <div class="chart-container">
+                        <canvas id="radarChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div id="archetypeExplanation" class="bg-white p-8 rounded-lg shadow-lg mb-8"></div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div class="bg-green-50 p-6 rounded-lg shadow-lg">
+                    <h3 class="text-xl font-bold text-green-800 mb-4">Best Matches</h3>
+                    <div id="bestMatches" class="space-y-4"></div>
+                </div>
+                <div class="bg-blue-50 p-6 rounded-lg shadow-lg">
+                    <h3 class="text-xl font-bold text-blue-800 mb-4">Growth Areas</h3>
+                    <div id="growthAreas" class="space-y-4"></div>
+                </div>
+            </div>
+
+            <button id="retakeButton" class="w-full bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors">
+                Retake Quiz
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const questions = [
+            { id: 1, text: "I enjoy trying new and adventurous activities.", archetype: "explorer" },
+            { id: 2, text: "I prefer having a well-organized plan before starting a task.", archetype: "builder" },
+            { id: 3, text: "I am comfortable making decisions quickly, even under pressure.", archetype: "director" },
+            { id: 4, text: "I often think about the deeper meaning of things.", archetype: "negotiator" },
+            { id: 5, text: "I feel energized when meeting new people.", archetype: "explorer" },
+            { id: 6, text: "I value tradition and like to follow established rules.", archetype: "builder" },
+            { id: 7, text: "I tend to focus on logical reasoning over emotions.", archetype: "director" },
+            { id: 8, text: "I easily understand and share the feelings of others.", archetype: "negotiator" },
+            { id: 9, text: "I seek out excitement and novel experiences in my life.", archetype: "explorer" },
+            { id: 10, text: "I am reliable and people often depend on me for support.", archetype: "builder" },
+            { id: 11, text: "I enjoy solving complex problems and puzzles.", archetype: "director" },
+            { id: 12, text: "I often find myself daydreaming or lost in thought.", archetype: "negotiator" },
+            { id: 13, text: "I communicate in a direct and straightforward manner.", archetype: "director" },
+            { id: 14, text: "I prefer harmonious relationships and avoid conflict when possible.", archetype: "negotiator" },
+            { id: 15, text: "I am drawn to creative and artistic pursuits.", archetype: "explorer" },
+            { id: 16, text: "I pay close attention to details and notice small inconsistencies.", archetype: "builder" },
+            { id: 17, text: "I find myself naturally taking charge in group situations.", archetype: "director" },
+            { id: 18, text: "I value deep, meaningful conversations over small talk.", archetype: "negotiator" },
+            { id: 19, text: "I prefer to maintain long-standing traditions and routines.", archetype: "builder" },
+            { id: 20, text: "I tend to trust my intuition when making important decisions.", archetype: "explorer" }
+        ];
+
+        const archetypes = {
+            explorer: {
+                name: "Explorer",
+                description: "Driven by dopamine, you are adventurous and seek novelty and excitement. You are energetic, spontaneous, and curious, thriving on new experiences and creativity.",
+                color: "#4F46E5",
+                bestMatches: ["negotiator", "director"],
+                growthAreas: [
+                    "Consider developing more structure in your daily routines",
+                    "Practice following through on long-term commitments",
+                    "Work on balancing spontaneity with stability"
+                ],
+                compatibilityNotes: {
+                    negotiator: "Perfect balance of adventure and emotional depth",
+                    director: "Dynamic partnership combining innovation and strategy",
+                    builder: "Opportunity to learn stability while maintaining excitement",
+                    explorer: "Fun but may lack stability and direction"
+                }
+            },
+            builder: {
+                name: "Builder",
+                description: "Influenced by serotonin, you value stability and tradition. You are calm, sociable, and community-oriented, preferring structure and loyalty in relationships.",
+                color: "#10B981",
+                bestMatches: ["negotiator", "builder"],
+                growthAreas: [
+                    "Try embracing spontaneity occasionally",
+                    "Practice being more flexible with changes",
+                    "Work on accepting new perspectives and ideas"
+                ],
+                compatibilityNotes: {
+                    negotiator: "Strong foundation with emotional depth",
+                    builder: "Stable and reliable partnership",
+                    explorer: "Opportunity for growth and balance",
+                    director: "Practical but may lack spontaneity"
+                }
+            },
+            director: {
+                name: "Director",
+                description: "Ruled by testosterone, you are analytical, logical, and direct. You are decisive, focused, and excel in strategic thinking and problem-solving.",
+                color: "#F59E0B",
+                bestMatches: ["negotiator", "explorer"],
+                growthAreas: [
+                    "Develop emotional intelligence and empathy",
+                    "Practice active listening skills",
+                    "Work on being more patient with others"
+                ],
+                compatibilityNotes: {
+                    negotiator: "Perfect balance of logic and emotion",
+                    explorer: "Dynamic and goal-oriented partnership",
+                    builder: "Strong foundation with clear direction",
+                    director: "Powerful but may lack emotional depth"
+                }
+            },
+            negotiator: {
+                name: "Negotiator",
+                description: "Guided by estrogen, you are empathetic and imaginative. You are insightful, nurturing, and adept at connecting with others on an emotional level.",
+                color: "#EF4444",
+                bestMatches: ["director", "explorer"],
+                growthAreas: [
+                    "Work on being more assertive",
+                    "Practice making decisions more quickly",
+                    "Develop stronger boundaries"
+                ],
+                compatibilityNotes: {
+                    director: "Complementary strengths create balance",
+                    explorer: "Exciting and emotionally fulfilling",
+                    builder: "Stable with emotional depth",
+                    negotiator: "Deep connection but may avoid conflict"
+                }
+            }
+        };
+
+        let currentQuestion = 1;
+        const totalQuestions = questions.length;
+        const quizForm = document.getElementById("quizForm");
+        const progressBar = document.getElementById("progressBar");
+        const progressText = document.getElementById("progressText");
+        const progressPercentage = document.getElementById("progressPercentage");
+        let charts = { bar: null, radar: null };
+
+        function updateProgress() {
+            const progress = (currentQuestion / totalQuestions) * 100;
+            progressBar.style.width = `${progress}%`;
+            progressText.textContent = `Question ${currentQuestion} of ${totalQuestions}`;
+            progressPercentage.textContent = `${Math.round(progress)}%`;
+        }
+
+        function createQuestionElement(question) {
+            const div = document.createElement("div");
+            div.className = "bg-white p-6 rounded-lg shadow-lg question-container";
+            div.dataset.questionId = question.id;
+            
+            div.innerHTML = `
+                <p class="text-lg font-medium mb-4">${question.id}. ${question.text}</p>
+                <div class="space-y-3">
+                    ${["Strongly Agree", "Agree", "Neutral", "Disagree", "Strongly Disagree"].map((option, index) => `
+                        <label class="flex items-center space-x-3 p-2 rounded hover:bg-gray-50 cursor-pointer">
+                            <input type="radio" name="q${question.id}" value="${5 - index}" 
+                                   class="h-4 w-4 text-blue-600" required>
+                            <span class="text-gray-700">${option}</span>
+                        </label>
+                    `).join("")}
+                </div>
+            `;
+
+            // Add change event listener to radio buttons
+            const radioButtons = div.querySelectorAll('input[type="radio"]');
+            radioButtons.forEach(radio => {
+                radio.addEventListener('change', () => {
+                    if (currentQuestion < totalQuestions) {
+                        currentQuestion++;
+                        updateProgress();
+                    }
+                });
+            });
+
+            return div;
+        }
+
+        function initializeQuiz() {
+            questions.forEach(question => {
+                quizForm.appendChild(createQuestionElement(question));
+            });
+
+            const submitButton = document.createElement("button");
+            submitButton.type = "submit";
+            submitButton.className = "w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors";
+            submitButton.textContent = "See Your Results";
+            quizForm.appendChild(submitButton);
+        }
+
+        function calculateScores(formData) {
+            const scores = { explorer: 0, builder: 0, director: 0, negotiator: 0 };
+            let totalAnswered = 0;
+
+            questions.forEach(question => {
+                const value = parseInt(formData.get(`q${question.id}`)) || 0;
+                if (value > 0) totalAnswered++;
+                scores[question.archetype] += value;
+            });
+
+            return { scores, totalAnswered };
+        }
+
+        function createCharts(scores) {
+            const ctx1 = document.getElementById("resultsChart").getContext("2d");
+            const ctx2 = document.getElementById("radarChart").getContext("2d");
+            const labels = Object.keys(scores).map(key => archetypes[key].name);
+            const data = Object.values(scores);
+            const colors = Object.keys(scores).map(key => archetypes[key].color);
+
+            if (charts.bar) charts.bar.destroy();
+            if (charts.radar) charts.radar.destroy();
+
+            // Bar Chart
+            charts.bar = new Chart(ctx1, {
+                type: "bar",
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors,
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 25,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const archetypeKey = Object.keys(archetypes)[context.dataIndex];
+                                    return [
+                                        `Score: ${context.formattedValue}`,
+                                        archetypes[archetypeKey].description.split('.')[0]
+                                    ];
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Radar Chart
+            charts.radar = new Chart(ctx2, {
+                type: "radar",
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: "rgba(79, 70, 229, 0.2)",
+                        borderColor: "rgba(79, 70, 229, 1)",
+                        borderWidth: 2,
+                        pointBackgroundColor: "rgba(79, 70, 229, 1)",
+                        pointBorderColor: "#fff",
+                        pointHoverBackgroundColor: "#fff",
+                        pointHoverBorderColor: "rgba(79, 70, 229, 1)"
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 25,
+                            ticks: {
+                                stepSize: 5,
+                                backdropColor: 'transparent'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            },
+                            pointLabels: {
+                                font: {
+                                    size: 14
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        function displayResults(scores) {
+            const sortedTypes = Object.entries(scores)
+                .sort((a, b) => b[1] - a[1])
+                .map(([type]) => type);
+            
+            const primaryType = sortedTypes[0];
+            const secondaryType = sortedTypes[1];
+            const archetype = archetypes[primaryType];
+
+            // Display archetype explanation
+            document.getElementById("archetypeExplanation").innerHTML = `
+                <h2 class="text-2xl font-bold mb-4">Your Primary Type: ${archetype.name}</h2>
+                <p class="text-lg mb-6">${archetype.description}</p>
+                <div class="mt-4">
+                    <h3 class="text-xl font-semibold mb-2">Your Archetype Blend</h3>
+                    <p class="text-gray-700">Your results show a unique combination of ${archetype.name} and ${archetypes[secondaryType].name} traits, suggesting ${archetype.compatibilityNotes[secondaryType]}.</p>
+                </div>
+            `;
+
+            // Display best matches
+            document.getElementById("bestMatches").innerHTML = archetype.bestMatches
+                .map(match => `
+                    <div class="mb-4">
+                        <h4 class="font-semibold text-green-700">${archetypes[match].name}</h4>
+                        <p class="text-sm text-green-600">${archetype.compatibilityNotes[match]}</p>
+                    </div>
+                `).join("");
+
+            // Display growth areas
+            document.getElementById("growthAreas").innerHTML = archetype.growthAreas
+                .map(area => `
+                    <div class="mb-4">
+                        <p class="text-blue-700">📈 ${area}</p>
+                    </div>
+                `).join("");
+
+            // Show results section
+            document.getElementById("quizSection").classList.add("hidden");
+            document.getElementById("resultsSection").classList.remove("hidden");
+            
+            // Create charts
+            createCharts(scores);
+        }
+
+        quizForm.addEventListener("submit", function(e) {
+            e.preventDefault();
+            const formData = new FormData(quizForm);
+            const { scores, totalAnswered } = calculateScores(formData);
+
+            // Validate all questions are answered
+            if (totalAnswered < totalQuestions) {
+                const errorMessage = document.getElementById("errorMessage");
+                const errorDetails = document.getElementById("errorDetails");
+                errorMessage.classList.remove("hidden");
+                
+                const unansweredQuestions = questions
+                    .filter(q => !formData.get(`q${q.id}`))
+                    .map(q => q.id)
+                    .join(", ");
+                
+                errorDetails.textContent = `Please answer question${unansweredQuestions.includes(",") ? "s" : ""} ${unansweredQuestions}.`;
+                errorMessage.scrollIntoView({ behavior: "smooth", block: "start" });
+                return;
+            }
+
+            displayResults(scores);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+
+        document.getElementById("retakeButton").addEventListener("click", function() {
+            quizForm.reset();
+            currentQuestion = 1;
+            updateProgress();
+            document.getElementById("resultsSection").classList.add("hidden");
+            document.getElementById("quizSection").classList.remove("hidden");
+            document.getElementById("errorMessage").classList.add("hidden");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+
+        // Initialize the quiz
+        initializeQuiz();
+        updateProgress();
+    </script>
+</body>
+</html> 
